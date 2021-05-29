@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from collections import deque
-import os
 import shutil
 import sys
 
@@ -27,12 +26,16 @@ def decode(data):
           f' min {min(data)}, max {max(data)}, range {max(data) - min(data)}')
 
     if all(c < 128 for c in data):
-        yield from text.try_decode(data.decode('ascii').strip())
+        decoded = data.decode('ascii').strip()
+        yield from text.try_decode(decoded)
+        print('Trying reversed.')
+        yield from text.try_decode(decoded[::-1])
     elif n_unique == 2:
         print('Only two unique values; converting to bitstring.')
         val0 = data[0]
         bit_str1 = b''.join(b'0' if bit == val0 else b'1' for bit in data)
         yield bit_str1
+        print('Trying reversed.')
         bit_str2 = b''.join(b'1' if bit == val0 else b'0' for bit in data)
         yield bit_str2
     elif image.is_image(data):
