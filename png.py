@@ -15,11 +15,49 @@ def check_normal_format(data):
     width, height, bit_depth = parse_ihdr_data(ihdr_data)
 
     chunk_type, chunk_data, offset = parse_chunk(data, offset)
-    assert chunk_type == b'IDAT'
-    # We look elsewhere at actual pixel values with Pillow
+    while chunk_type != b'IEND':
+        match chunk_type:
+            case b'IDAT':
+                # We look elsewhere at actual pixel values with Pillow
+                pass
+            case b'eXIf':
+                print('eXIf chunk: Exif data detected. Run exiftool.')
+            case b'sRGB':
+                assert len(chunk_data) == 1
+                # print(f'sRGB chunk: sRGB colour space (rendering intent {chunk_data[0]}).')
+            case b'pHYs':
+                assert len(chunk_data) == 9
+                ppu_x = int.from_bytes(chunk_data[:4], 'big')
+                ppu_y = int.from_bytes(chunk_data[4:8], 'big')
+                unit = chunk_data[8]
+                assert unit == 1  # Metres
+                # print(f'pHYs chunk: Pixels per meter: {ppu_x}x{ppu_y}.')
+            case b'iTXt':
+                assert chunk_data.startswith(
+                    b'XML:com.adobe.xmp\x00\x00\x00\x00\x00'
+                )
+                print(f'iTXt chunk: {chunk_data[22:].decode()}')
+            case b'gAMA':
+                assert len(chunk_data) == 4
+                # gamma = int.from_bytes(chunk_data, 'big')
+                # print(f'gAMA chunk: Gamma: {gamma}')
+            case b'cHRM':
+                # print('cHRM chunk.')
+                pass
+            case b'bKGD':
+                bg_colour = chunk_data
+                print(f'bKGD chunk: Explicit background colour set: {bg_colour}')
+            case b'tIME':
+                # print('tIME chunk.')
+                pass
+            case b'tEXt':
+                print(f'tEXt chunk: {chunk_data.decode()}')
+            case _:
+                print(f'Unknown chunk type {chunk_type}')
 
-    chunk_type, chunk_data, offset = parse_chunk(data, offset)
-    assert chunk_type == b'IEND'
+        chunk_type, chunk_data, offset = parse_chunk(data, offset)
+
+    # After last chunk
     assert len(chunk_data) == 0
     assert len(data) == offset
 
