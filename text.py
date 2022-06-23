@@ -6,21 +6,81 @@ import base58
 import morse
 
 
-def try_decode(text):
-    valid = all(' ' <= c <= '~' or ord(c) in (0, 4, 10, 13) for c in text)
-    print(f'{"Valid" if valid else "Weird"} ASCII: "{pprint(text)}"')
+def try_decode_bytes(data):
+    print('Trying to decode as text.')
+    data = data.strip()
 
-    if all('0' <= c <= '1' for c in text.lower()):
+    if data.isascii():
+        decoded = data.decode('ascii')
+        print('Valid ASCII.')
+        yield from try_decode_text(decoded)
+        print('Trying reversed.')
+        yield from try_decode_text(decoded[::-1])
+
+    else:
+        if len(data) % 4 == 0:
+            try:
+                decoded = data.decode('utf-32-be')
+            except ValueError:
+                pass
+            else:
+                print('Valid UTF-32-BE.')
+                yield from try_decode_text(decoded)
+            try:
+                decoded = data.decode('utf-32-le')
+            except ValueError:
+                pass
+            else:
+                print('Valid UTF-32-LE.')
+                yield from try_decode_text(decoded)
+
+        if len(data) % 2 == 0:
+            try:
+                decoded = data.decode('utf-16-be')
+            except ValueError:
+                pass
+            else:
+                print('Valid UTF-16-BE.')
+                yield from try_decode_text(decoded)
+            try:
+                decoded = data.decode('utf-16-le')
+            except ValueError:
+                pass
+            else:
+                print('Valid UTF-16-LE.')
+                yield from try_decode_text(decoded)
+
+        try:
+            decoded = data.decode('utf-8')
+        except ValueError:
+            pass
+        else:
+            print('Valid UTF-8.')
+            yield from try_decode_text(decoded)
+
+
+def try_decode_text(text):
+    is_normal = all(' ' <= c <= '~' or ord(c) in (0, 4, 10, 13) for c in text)
+    print(f'{"Normal" if is_normal else "Weird"}'
+          f' {"ASCII" if text.isascii() else "non-ASCII"}'
+          ' text:'
+          f' "{pprint(text)}"')
+
+    sanitised = ''.join(text.lower().split())
+
+    if all('0' <= c <= '1' for c in sanitised):
         print('Binary values or morse code.')
-        yield bytes(int(''.join(bits), 2) for bits in grouper(text, 8, '0'))
+        yield bytes(int(''.join(bits), 2)
+                    for bits in grouper(sanitised, 8, '0'))
         yield from morse.try_decode(text)
-    elif all('0' <= c <= '7' for c in text.lower()):
+    elif all('0' <= c <= '7' for c in sanitised):
         print('Octal values.')
         raise NotImplementedError
-    elif all('0' <= c <= '9' or 'a' <= c <= 'f' for c in text.lower()):
+    elif all('0' <= c <= '9' or 'a' <= c <= 'f' for c in sanitised):
         print('Hexadecimal values.')
-        raise NotImplementedError
-    elif all('2' <= c <= '7' or 'A' <= c <= 'Z' or c == '=' for c in text):
+        yield bytes.fromhex(text)
+    elif all('2' <= c <= '7' or 'A' <= c <= 'Z' or c == '='
+             for c in sanitised):
         try:
             decoded = base64.b32decode(text)
             print(f'Base32-decoded: {pprint(decoded)}')
@@ -28,7 +88,7 @@ def try_decode(text):
         except binascii.Error:
             print('Not base32-decodable.')
     elif all('0' <= c <= '9' or 'a' <= c <= 'z' or c in '=/+'
-                for c in text.lower()):
+             for c in sanitised):
         if not any(c in '0OlI+/' for c in text):
             decoded = base58.decode(text, 'BTC')
             print(f'Base58-decoded (BTC): {pprint(decoded)}')
@@ -77,7 +137,7 @@ def try_decode(text):
         print('Newlines detected: stripping them out.')
         yield text.translate(str.maketrans('', '', '\r\n')).encode()
     else:
-        print('Just plain ASCII perhaps? Printing in full:')
+        print('Just human-readable text perhaps? Printing in full:')
         print(text)
 
 
