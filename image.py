@@ -3,15 +3,14 @@
 Find hidden information in images.
 """
 
-import collections
 import io
 import math
-import sys
 
 import matplotlib.pyplot as plt
 import PIL.Image
 
 import gif
+import jpeg
 import png
 
 
@@ -31,11 +30,14 @@ def try_decode(data):
     image = PIL.Image.open(io.BytesIO(data))
     _log(f'{image.format} image.')
 
-    assert image.format in ('PNG', 'GIF')
     if image.format == 'PNG':
         png.check_normal_format(data)
     elif image.format == 'GIF':
         gif.check_normal_format(data)
+    elif image.format == 'JPEG':
+        jpeg.check_normal_format(data)
+    else:
+        raise NotImplementedError('Image format {image.format} not supported.')
 
     check_pixels(image)
 
