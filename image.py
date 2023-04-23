@@ -29,7 +29,7 @@ def try_decode(data):
 
     # Verify closes the internal file pointer, so we have to open it again
     image = PIL.Image.open(io.BytesIO(data))
-    print(f'{image.format} image.')
+    _log(f'{image.format} image.')
 
     assert image.format in ('PNG', 'GIF')
     if image.format == 'PNG':
@@ -39,25 +39,26 @@ def try_decode(data):
 
     check_pixels(image)
 
-    if image.is_animated:
-        print(f'Animated image, {image.n_frames} frames')
+    if getattr(image, 'is_animated', False):
+        _log(f'Animated: {image.n_frames} frames')
         yield from check_first_palette_colors(image)
 
 
 def check_pixels(image):
-    print(f'Mode: {image.mode} ({"".join(image.getbands())})')
-    print(f'Extrema: {image.getextrema()}')
+    _log(f'Mode: {image.mode} ({"".join(image.getbands())})')
+    _log(f'Extrema: {image.getextrema()}')
+    _log(f'Entropy: {image.entropy()}')
 
     if image.mode == 'RGBA' and image.getextrema()[3] == (0, 0):
-        print("It's a transparent image, but there's something there.")
+        _log("It's a transparent image, but there's something there.")
         image.convert('RGB').show()
 
-    print('Showing image per channel')
-    for channel in image.split():
-        channel.show()
+    if _prompt_bool('Show image per channel?'):
+        for channel in image.split():
+            channel.show()
 
-    print('Showing histogram per channel')
-    show_histogram(image)
+    if _prompt_bool('Show histogram per channel?'):
+        show_histogram(image)
 
 
 def show_histogram(image):
@@ -92,14 +93,14 @@ def check_first_palette_colors(image):
     gs = [color[1] for color in colors]
     bs = [color[2] for color in colors]
 
-    print('Trying to find patterns in R values')
+    _log('Trying to find patterns in R values')
     yield bytes(rs)
-    print('Trying to find patterns in G values')
+    _log('Trying to find patterns in G values')
     yield bytes(gs)
-    print('Trying to find patterns in B values')
+    _log('Trying to find patterns in B values')
     yield bytes(bs)
 
-    print('Creating image from first colors in palettes')
+    _log('Creating image from first colors in palettes')
     bytes_ = bytes(x for color in colors for x in color)
     dimensions = _factorize(image.n_frames)
     image = PIL.Image.frombytes('RGB', dimensions, bytes_)
@@ -118,3 +119,22 @@ def _factorize(n):
     while math.prod(ds) > w:
         w *= ds.pop()
     return w, math.prod(ds)
+
+
+def _prompt_bool(question, default='no'):
+    answer_to_value = {'yes': True, 'y': True, 'no': False, 'n': False}
+    options = {'yes': 'Y/n', 'no': 'y/N'}[default]
+
+    while True:
+        _log(f'{question} [{options}] ', end='')
+        answer = input().lower()
+        if answer == '':
+            answer = default
+        try:
+            return answer_to_value[answer]
+        except KeyError:
+            print('Please respond with "yes", "no", "y" or "n".')
+
+
+def _log(*args, **kwargs):
+    print('Image:', *args, **kwargs)

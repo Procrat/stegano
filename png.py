@@ -21,39 +21,39 @@ def check_normal_format(data):
                 # We look elsewhere at actual pixel values with Pillow
                 pass
             case b'eXIf':
-                print('eXIf chunk: Exif data detected. Run exiftool.')
+                _log('eXIf chunk: Exif data detected. Run exiftool.')
             case b'sRGB':
                 assert len(chunk_data) == 1
-                # print(f'sRGB chunk: sRGB colour space (rendering intent {chunk_data[0]}).')
+                # _log(f'sRGB chunk: sRGB colour space (rendering intent {chunk_data[0]}).')
             case b'pHYs':
                 assert len(chunk_data) == 9
                 ppu_x = parse_int(chunk_data[:4])
                 ppu_y = parse_int(chunk_data[4:8])
                 unit = chunk_data[8]
                 assert unit == 1  # Metres
-                # print(f'pHYs chunk: Pixels per meter: {ppu_x}x{ppu_y}.')
+                # _log(f'pHYs chunk: Pixels per meter: {ppu_x}x{ppu_y}.')
             case b'iTXt':
                 assert chunk_data.startswith(
                     b'XML:com.adobe.xmp\x00\x00\x00\x00\x00'
                 )
-                print(f'iTXt chunk: {chunk_data[22:].decode()}')
+                _log(f'iTXt chunk: {chunk_data[22:].decode()}')
             case b'gAMA':
                 assert len(chunk_data) == 4
                 # gamma = parse_int(chunk_data)
-                # print(f'gAMA chunk: Gamma: {gamma}')
+                # _log(f'gAMA chunk: Gamma: {gamma}')
             case b'cHRM':
-                # print('cHRM chunk.')
+                # _log('cHRM chunk.')
                 pass
             case b'bKGD':
                 bg_colour = chunk_data
-                print(f'bKGD chunk: Explicit background colour set: {bg_colour}')
+                _log(f'bKGD chunk: Explicit background colour set: {bg_colour}')
             case b'tIME':
-                # print('tIME chunk.')
+                # _log('tIME chunk.')
                 pass
             case b'tEXt':
-                print(f'tEXt chunk: {chunk_data.decode()}')
+                _log(f'tEXt chunk: {chunk_data.decode()}')
             case _:
-                print(f'Unknown chunk type {chunk_type}')
+                _log(f'Unknown chunk type {chunk_type}')
 
         chunk_type, chunk_data, offset = parse_chunk(data, offset)
 
@@ -84,7 +84,7 @@ def parse_ihdr_data(data):
         4: 'greyscale with alpha',
         6: 'truecolour with alpha',
     }[colour_type]
-    print(f'Dimensions: {width}x{height}, {bit_depth}-bit, {colour_type_str}')
+    _log(f'Dimensions: {width}x{height}, {bit_depth}-bit, {colour_type_str}')
     compression_method = parse_int(data[10:11])
     assert compression_method == 0
     filter_method = parse_int(data[11:12])
@@ -97,3 +97,7 @@ def parse_ihdr_data(data):
 
 def parse_int(data):
     return int.from_bytes(data, 'big')
+
+
+def _log(*args):
+    print('PNG:', *args)

@@ -37,6 +37,7 @@ def decode(data):
         print('Image detected.')
         yield from image.try_decode(data)
     else:
+        print('Trying to decode as text.')
         yield from text.try_decode_bytes(data)
 
 
